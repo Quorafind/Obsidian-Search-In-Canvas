@@ -6,3 +6,129 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+
+.canvas-search-panel {
+	display: flex;
+	flex-direction: column;
+
+	gap: var(--size-2-2);
+
+	position: absolute;
+	background: var(--background-primary);
+	font-weight: bold;
+	border-radius: var(--radius-s);
+	box-shadow: var(--shadow-s);
+	width: max-content;
+	min-height: 76px;
+	height: 84px;
+
+	cursor: var(--cursor);
+	padding: var(--size-4-2);
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.canvas-search-bar-container {
+	display: flex;
+	flex-direction: row;
+	gap: var(--size-2-2);
+}
+
+.canvas-search-input-container {
+	width: 200px;
+}
+
+.canvas-search-button-group {
+	display: flex;
+	flex-direction: row;
+
+	gap: var(--size-2-1);
+}
+
+
+.canvas-node.canvas-search-highlight .canvas-node-container {
+	border-color: var(--color-accent);
+	box-shadow: var(--shadow-stationary), var(--shadow-border-accent);
+}
+
+.canvas-search-match-count {
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+	padding-left: var(--size-2-2);
+	padding-right: var(--size-2-2);
+	padding-top: var(--size-2-3);
+	padding-bottom: var(--size-2-1);
+	align-items: center;
+
+	position: relative;
+}
+
+.canvas-search-match-count .canvas-search-count {
+	text-align: start;
+}
+
+.canvas-search-match-count .spacer {
+	flex-grow: 1;
+}
+
+.canvas-search-info-panel {
+	position: absolute;
+
+	background: var(--background-primary);
+	font-weight: bold;
+	border-radius: var(--radius-s);
+	box-shadow: var(--shadow-s);
+
+	cursor: var(--cursor);
+	padding: var(--size-4-2);
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+
+	min-width: 220px;
+	width: max-content;
+	height: max-content;
+	top: 88px;
+	left: 0;
+
+	font-size: var(--font-ui-smaller);
+
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+}
+
+.canvas-search-info-panel .canvas-instruction-label {
+	font-size: var(--font-ui-small);
+}
+
+.canvas-search-info-panel .canvas-instruction {
+	gap: var(--size-4-6);
+
+	align-items: center;
+}
+
+.canvas-search-info-panel .setting-hotkey {
+	font-size: 10px;
+}
+
+.canvas-search-control-item button {
+	padding: var(--size-2-1);
+	padding-left: var(--size-2-3);
+	padding-right: var(--size-2-3);
+}
+
+span.canvas-search-info {
+	margin-right: -4px;
+}
+
+.canvas-wrapper.is-searching .canvas-node:not(.canvas-search-highlight) {
+	opacity: 0.2;
+}
+
+.canvas-wrapper.is-searching .canvas-edges g:not(.is-focused) {
+	opacity: 0.2;
+}
