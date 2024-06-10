@@ -43,7 +43,7 @@ via Settings:
 Option 1:
 
 1. Go to [Releases](https://github.com/Quorafind/Obsidian-Search-In-Canvas/releases)
-2. Download the latest `Obsidian-Search-In-Canvas-${version}.rar`
+2. Download the latest `Obsidian-Search-In-Canvas-${version}.zip`
 3. Extract its contents
 4. Move the contents into /your-vault/.obsidian/plugins/obsidian-search-in-canvas/
 5. Go to *Settings > Community plugins*
