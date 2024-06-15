@@ -1,7 +1,7 @@
 import { Scope, setIcon, setTooltip, View } from "obsidian";
-import MyPlugin, { SearchPanel } from "./main";
+import SearchInCanvasPlugin, { SearchPanel } from "./main";
 
-export const updateView = (plugin: MyPlugin, view: any) => {
+export const updateView = (plugin: SearchInCanvasPlugin, view: any) => {
 	if (view.patched) return;
 
 	patchKeys(plugin, view.scope);
@@ -12,7 +12,7 @@ export const updateView = (plugin: MyPlugin, view: any) => {
 
 	view.patched = true;
 };
-export const initScope = (plugin: MyPlugin, view: View & {
+export const initScope = (plugin: SearchInCanvasPlugin, view: View & {
 	canvas: any;
 	searchPanel: SearchPanel | null;
 	searchButton: HTMLElement | null;
@@ -54,11 +54,9 @@ export const initScope = (plugin: MyPlugin, view: View & {
 			view.canvas.searchPanel.previous();
 		}
 	});
-
-	console.log(view.scope);
 };
 
-export const patchKeys = (plugin: MyPlugin, scope: Scope) => {
+export const patchKeys = (plugin: SearchInCanvasPlugin, scope: Scope) => {
 	(scope as Scope & {
 		keys: any[]
 	}).keys.forEach((key: any) => {
@@ -85,7 +83,7 @@ export const createSearchPanel = (canvas: any, targetEl: HTMLElement) => {
 	return new SearchPanel(canvas, targetEl);
 };
 
-export const createSearchButton = (canvas: any, plugin: MyPlugin) => {
+export const createSearchButton = (canvas: any, plugin: SearchInCanvasPlugin) => {
 	if (canvas.searchButton) return canvas.searchButton;
 
 	const groupEl = createEl('div', {

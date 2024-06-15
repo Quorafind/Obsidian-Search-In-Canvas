@@ -444,10 +444,12 @@ export class SearchPanel extends Component {
 
 }
 
-export default class MyPlugin extends Plugin {
+export default class SearchInCanvasPlugin extends Plugin {
 	canvas: any;
 	searchPanel: SearchPanel[] = [];
 	searchButton: HTMLElement[] = [];
+
+	patchAlready: boolean = false;
 
 	async onload() {
 		this.patchCanvas();
@@ -481,7 +483,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	patchCanvas() {
-		const init = (plugin: MyPlugin) => {
+		const init = (plugin: SearchInCanvasPlugin) => {
 			const view = plugin.app.workspace.getLeavesOfType('canvas')[0]?.view;
 			if (!view) return false;
 
@@ -520,15 +522,43 @@ export default class MyPlugin extends Plugin {
 			});
 
 			this.register(uninstaller);
+			this.patchAlready = true;
 		};
 
-		this.app.workspace.onLayoutReady(() => {
-			if (!init(this)) {
-				const evt = this.app.workspace.on("layout-change", () => {
-					init(this) && this.app.workspace.offref(evt);
-				});
-				this.registerEvent(evt);
-			}
-		});
+		// this.app.workspace.onLayoutReady(() => {
+		// 	if (!init(this)) {
+		// 		const evt = this.app.workspace.on("layout-change", () => {
+		// 			init(this) && this.app.workspace.offref(evt);
+		// 		});
+		// 		this.registerEvent(evt);
+		// 	}
+		// });
+
+		const initPatch = (plugin: SearchInCanvasPlugin) => {
+			const leafUninstaller = around(WorkspaceLeaf.prototype, {
+				openFile: (next) => {
+					return async function (viewState, eState) {
+						const result = await next.apply(this, [viewState, eState]);
+
+						if (plugin.patchAlready) {
+							leafUninstaller();
+							return;
+						}
+
+						if (this.view instanceof View && this.view.canvas && !this.view.canvas.searchPanel) {
+							init(plugin);
+							updateView(plugin, this.view);
+							leafUninstaller();
+						}
+
+						return result;
+					};
+				}
+			});
+
+			this.register(leafUninstaller);
+		};
+
+		initPatch(this);
 	}
 }
