@@ -484,6 +484,7 @@ export default class SearchInCanvasPlugin extends Plugin {
 
 	patchCanvas() {
 		const init = (plugin: SearchInCanvasPlugin) => {
+			if (plugin.patchAlready) return true;
 			const view = plugin.app.workspace.getLeavesOfType('canvas')[0]?.view;
 			if (!view) return false;
 
@@ -525,14 +526,14 @@ export default class SearchInCanvasPlugin extends Plugin {
 			this.patchAlready = true;
 		};
 
-		// this.app.workspace.onLayoutReady(() => {
-		// 	if (!init(this)) {
-		// 		const evt = this.app.workspace.on("layout-change", () => {
-		// 			init(this) && this.app.workspace.offref(evt);
-		// 		});
-		// 		this.registerEvent(evt);
-		// 	}
-		// });
+		this.app.workspace.onLayoutReady(() => {
+			if (!init(this)) {
+				const evt = this.app.workspace.on("layout-change", () => {
+					init(this) && this.app.workspace.offref(evt);
+				});
+				this.registerEvent(evt);
+			}
+		});
 
 		const initPatch = (plugin: SearchInCanvasPlugin) => {
 			const leafUninstaller = around(WorkspaceLeaf.prototype, {
