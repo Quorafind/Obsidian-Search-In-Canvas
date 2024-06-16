@@ -1,6 +1,6 @@
 {
 	"name": "search-in-canvas",
-	"version": "1.0.1",
+	"version": "1.1.0",
 	"description": "Search in canvas",
 	"main": "main.js",
 	"scripts": {

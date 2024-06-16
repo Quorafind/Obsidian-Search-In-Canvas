@@ -1,5 +1,6 @@
 import { Scope, setIcon, setTooltip, View } from "obsidian";
-import SearchInCanvasPlugin, { SearchPanel } from "./main";
+import SearchInCanvasPlugin from "./main";
+import { SearchPanel } from "./searchPanel";
 
 export const updateView = (plugin: SearchInCanvasPlugin, view: any) => {
 	if (view.patched) return;
@@ -28,7 +29,7 @@ export const initScope = (plugin: SearchInCanvasPlugin, view: View & {
 			view.canvas.searchPanel.load();
 			plugin.searchPanel.push(view.canvas.searchPanel);
 		}
-		view.canvas.searchPanel.isShown() ? view.canvas.searchPanel.hide() : view.canvas.searchPanel.show();
+		view.canvas.searchPanel.isShown() ? view.canvas.searchPanel?.focus() : view.canvas.searchPanel.show();
 	});
 
 	view.scope?.register(["Mod"], 'g', () => {

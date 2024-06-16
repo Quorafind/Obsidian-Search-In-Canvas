@@ -1,18 +1,19 @@
 import {
 	ButtonComponent,
-	Component, debounce, ExtraButtonComponent,
-	FuzzyMatch, Menu, MenuItem, Platform,
-	Plugin,
-	prepareFuzzySearch, Scope,
+	Component,
+	debounce,
+	ExtraButtonComponent,
+	FuzzyMatch,
+	Menu,
+	MenuItem,
+	Platform,
+	prepareFuzzySearch,
 	SearchComponent,
-	setIcon,
-	setTooltip, View, WorkspaceLeaf
+	setTooltip
 } from "obsidian";
 import { computePosition, flip, offset } from "@floating-ui/dom";
-import { around } from "monkey-around";
 // @ts-ignore
 import { remote } from "electron";
-import { updateView } from "./searchInit";
 
 export class SearchPanel extends Component {
 	canvas: any;
@@ -28,6 +29,7 @@ export class SearchPanel extends Component {
 	private currentIndex = 0;
 
 	highlightedNodes: Map<string, any> = new Map();
+	selectedNode: any = null;
 
 	prevBtn: ButtonComponent | null = null;
 	nextBtn: ButtonComponent | null = null;
@@ -35,6 +37,8 @@ export class SearchPanel extends Component {
 
 	searchEdge: boolean = true;
 	searchGroup: boolean = true;
+
+	isSelfCalled: boolean = false;
 
 	constructor(canvas: any, targetEl: HTMLElement) {
 		super();
@@ -61,7 +65,7 @@ export class SearchPanel extends Component {
 
 
 		this.inputContainerEl = searchBarContainer.createEl('div', {
-			cls: 'canvas-search-input-container',
+			cls: ['canvas-search-input-container', 'is-empty'],
 		});
 
 		this.searchBar = new SearchComponent(this.inputContainerEl);
@@ -74,17 +78,26 @@ export class SearchPanel extends Component {
 						node.blur();
 					}
 				});
+				this.inputContainerEl?.toggleClass('is-empty', true);
 				this.highlightedNodes.clear();
 				this.countEl?.hide();
 				this.canvas.wrapperEl.toggleClass('is-searching', false);
 			}
 
+			this.inputContainerEl?.toggleClass('is-empty', value === "");
 			this.debounceSearch();
 		});
 		this.searchBar.inputEl.addEventListener('keydown', (e) => {
 			if (e.key === 'Enter') {
+				const action = e.ctrlKey ? 'edit' : e.shiftKey ? 'previous' : 'next';
+
+				if (action === 'edit' && this.selectedNode) {
+					this[action]();
+					return;
+				}
+
 				if (this.highlightedNodes.size > 1) {
-					this.next();
+					this[action]();
 					return;
 				}
 
@@ -99,9 +112,9 @@ export class SearchPanel extends Component {
 				e.stopPropagation();
 				this.hide();
 			}
-			if (e.ctrlKey && e.key === 'f') {
-				this.hide();
-			}
+			// if (e.ctrlKey && e.key === 'f') {
+			// 	this.hide();
+			// }
 		});
 
 		const buttonGroup = searchBarContainer.createEl('div', {
@@ -119,26 +132,6 @@ export class SearchPanel extends Component {
 			this.next();
 		});
 
-		this.configBtn = new ButtonComponent(buttonGroup.createEl('div', {
-			cls: ['canvas-search-config-btn-container', 'canvas-search-control-item']
-		})).setIcon('settings-2').onClick((evt) => {
-			const menu = new Menu();
-			menu.addItem((item: MenuItem) => {
-				item.setTitle('Group').setChecked(this.searchGroup).onClick(() => {
-					this.searchGroup = !this.searchGroup;
-					this.onSearch();
-				});
-			});
-			menu.addItem((item: MenuItem) => {
-				item.setTitle('Edge').setChecked(this.searchEdge).onClick(() => {
-					this.searchEdge = !this.searchEdge;
-					this.onSearch();
-				});
-			});
-
-			menu.showAtMouseEvent(evt);
-		});
-
 
 		this.infoEl = this.floatingElement.createEl('div', {
 			cls: 'canvas-search-info-panel',
@@ -146,13 +139,16 @@ export class SearchPanel extends Component {
 
 		[{
 			desc: 'Start searching',
-			hotkeys: ['Enter']
+			hotkeys: ['Enter', 'Shift+Enter']
 		}, {
 			desc: 'Select next match',
 			hotkeys: [(Platform.isMacOS ? 'Command' : 'Ctrl') + '+G', "F3"]
 		}, {
 			desc: 'Select previous match',
 			hotkeys: [(Platform.isMacOS ? 'Command' : 'Ctrl') + '+Shift+G', 'Shift+F3']
+		}, {
+			desc: 'Edit selected node',
+			hotkeys: [(Platform.isMacOS ? 'Command' : 'Ctrl') + '+Enter']
 		}, {
 			desc: 'Close search',
 			hotkeys: ['Esc']
@@ -173,6 +169,26 @@ export class SearchPanel extends Component {
 		matchCountEl.createEl('span', {
 			cls: 'canvas-search-info',
 		}, (el) => {
+			this.configBtn = new ButtonComponent(el.createEl('div', {
+				cls: ['canvas-search-config-btn-container', 'canvas-search-control-item']
+			})).setIcon('settings-2').onClick((evt) => {
+				const menu = new Menu();
+				menu.addItem((item: MenuItem) => {
+					item.setTitle('Group').setChecked(this.searchGroup).onClick(() => {
+						this.searchGroup = !this.searchGroup;
+						this.onSearch();
+					});
+				});
+				menu.addItem((item: MenuItem) => {
+					item.setTitle('Edge').setChecked(this.searchEdge).onClick(() => {
+						this.searchEdge = !this.searchEdge;
+						this.onSearch();
+					});
+				});
+
+				menu.showAtMouseEvent(evt);
+			});
+
 			new ExtraButtonComponent(el).setIcon('help-circle').onClick(() => {
 				if (!this.infoEl) return;
 				this.infoEl.isShown() ? this.infoEl.hide() : this.infoEl.show();
@@ -217,6 +233,7 @@ export class SearchPanel extends Component {
 	show() {
 		if (this.floatingElement) {
 			this.floatingElement.show();
+			this.floatingElement.toggleClass('is-shown', true);
 			computePosition(this.targetEl, this.floatingElement, {
 				placement: 'left-start',
 				middleware: [offset(6), flip()],
@@ -231,6 +248,11 @@ export class SearchPanel extends Component {
 			this.focus();
 
 			const captureEvent = (e: MouseEvent) => {
+				if (this.isSelfCalled) {
+					this.isSelfCalled = false;
+					return;
+				}
+
 				if ((e.target as HTMLElement).closest('.menu') || (e.target as HTMLElement).closest('.canvas-search-panel') || (e.target as HTMLElement).closest('.canvas-control-item')) return;
 				this.hide();
 
@@ -260,9 +282,12 @@ export class SearchPanel extends Component {
 	}
 
 	hide() {
+
+
 		if (this.floatingElement) {
 			this.searchBar?.clearButtonEl.click();
 			this.floatingElement.hide();
+			this.floatingElement.toggleClass('is-shown', false);
 			this.highlightedNodes.forEach((node) => {
 				node?.nodeEl?.toggleClass('canvas-search-highlight', false);
 				if (this.searchEdge) {
@@ -271,6 +296,7 @@ export class SearchPanel extends Component {
 				}
 			});
 			this.highlightedNodes.clear();
+			this.selectedNode = null;
 			this.infoEl && this.infoEl.hide();
 
 			this.canvas.wrapperEl.toggleClass('is-searching', false);
@@ -289,6 +315,7 @@ export class SearchPanel extends Component {
 		}
 
 		this.currentIndex = (this.currentIndex + 1) % nodes.length;
+		this.selectedNode = nodes[this.currentIndex];
 		this.selectAndZoom(nodes[this.currentIndex]);
 	}
 
@@ -303,6 +330,7 @@ export class SearchPanel extends Component {
 		}
 
 		this.currentIndex = (this.currentIndex - 1 + nodes.length) % nodes.length;
+		this.selectedNode = nodes[this.currentIndex];
 		this.selectAndZoom(nodes[this.currentIndex]);
 	}
 
@@ -321,6 +349,19 @@ export class SearchPanel extends Component {
 	focus() {
 		if (this.searchBar) {
 			this.searchBar?.inputEl.focus();
+		}
+	}
+
+	edit() {
+		if (this.selectedNode) {
+			const isEdge = this.searchEdge && !!this.selectedNode.lineGroupEl;
+
+			!isEdge ? this.selectedNode.startEditing() : (() => {
+				this.selectedNode.labelElement?.focus();
+				this.isSelfCalled = true;
+
+				this.selectedNode.labelElement?.wrapperEl.click();
+			})();
 		}
 	}
 
@@ -442,124 +483,4 @@ export class SearchPanel extends Component {
 		}
 	}
 
-}
-
-export default class SearchInCanvasPlugin extends Plugin {
-	canvas: any;
-	searchPanel: SearchPanel[] = [];
-	searchButton: HTMLElement[] = [];
-
-	patchAlready: boolean = false;
-
-	async onload() {
-		this.patchCanvas();
-		this.app.workspace.onLayoutReady(() => {
-			const leaves = this.app.workspace.getLeavesOfType('canvas');
-			leaves.forEach(leaf => {
-				updateView(this, leaf.view);
-			});
-		});
-	}
-
-	onunload() {
-		this.searchPanel.forEach(panel => panel.unload());
-		this.searchButton.forEach(button => {
-			if (button.parentElement) button.parentElement.detach();
-		});
-
-		const leaves = this.app.workspace.getLeavesOfType('canvas') as WorkspaceLeaf[];
-		leaves.forEach((leaf: WorkspaceLeaf & {
-			view: View & {
-				canvas: any;
-				patched: boolean;
-			}
-		}) => {
-			if ((leaf.view).patched) {
-				leaf.view.canvas.searchPanel = null;
-				leaf.view.canvas.searchButton = null;
-				leaf.view.patched = false;
-			}
-		});
-	}
-
-	patchCanvas() {
-		const init = (plugin: SearchInCanvasPlugin) => {
-			if (plugin.patchAlready) return true;
-			const view = plugin.app.workspace.getLeavesOfType('canvas')[0]?.view;
-			if (!view) return false;
-
-			const canvas = (view as View & {
-				canvas: any
-			}).canvas;
-
-			if (!canvas) return false;
-
-			const uninstaller = around(view.constructor.prototype, {
-				onload: (next: any) => {
-					return function () {
-						next.apply(this);
-						updateView(plugin, this);
-					};
-				},
-				onResize: (next: any) => {
-					return function (...args: any) {
-						next.apply(this, args);
-						this.canvas?.searchPanel && this.canvas?.searchPanel?.isShown() && this.canvas?.searchPanel?.updatePosition();
-					};
-				},
-				onunload: (next: any) => {
-					return function () {
-						next.apply(this);
-						if (this.canvas?.searchPanel) {
-							this.canvas.searchPanel.unload();
-							this.canvas.searchButton?.detach();
-							this.canvas.searchButtonGroup?.detach();
-							this.canvas.searchPanel = null;
-							this.canvas.searchButton = null;
-							this.patched = false;
-						}
-					};
-				}
-			});
-
-			this.register(uninstaller);
-			this.patchAlready = true;
-		};
-
-		this.app.workspace.onLayoutReady(() => {
-			if (!init(this)) {
-				const evt = this.app.workspace.on("layout-change", () => {
-					init(this) && this.app.workspace.offref(evt);
-				});
-				this.registerEvent(evt);
-			}
-		});
-
-		const initPatch = (plugin: SearchInCanvasPlugin) => {
-			const leafUninstaller = around(WorkspaceLeaf.prototype, {
-				openFile: (next) => {
-					return async function (viewState, eState) {
-						const result = await next.apply(this, [viewState, eState]);
-
-						if (plugin.patchAlready) {
-							leafUninstaller();
-							return;
-						}
-
-						if (this.view instanceof View && this.view.canvas && !this.view.canvas.searchPanel) {
-							init(plugin);
-							updateView(plugin, this.view);
-							leafUninstaller();
-						}
-
-						return result;
-					};
-				}
-			});
-
-			this.register(leafUninstaller);
-		};
-
-		initPatch(this);
-	}
 }
