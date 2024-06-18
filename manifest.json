@@ -2,7 +2,7 @@
 	"id": "search-in-canvas",
 	"name": "Search In Canvas",
 	"version": "1.1.1",
-	"minAppVersion": "1.1.0",
+	"minAppVersion": "1.2.0",
 	"description": "Search text in canvas",
 	"author": "Boninall",
 	"authorUrl": "https://github.com/Quorafind",
