@@ -12,8 +12,8 @@ import {
 	setTooltip
 } from "obsidian";
 import { computePosition, flip, offset } from "@floating-ui/dom";
-// @ts-ignore
-import { remote } from "electron";
+
+const remote = Platform.isDesktop ? require('electron').remote : null;
 
 export class SearchPanel extends Component {
 	canvas: any;
@@ -415,7 +415,7 @@ export class SearchPanel extends Component {
 				if (!prop) continue;
 				if (node[prop]) {
 					let searchValue = node[prop];
-					if (prop === 'url' && node.frameEl) {
+					if (prop === 'url' && node.frameEl && Platform.isDesktop) {
 						const frameEl = node.frameEl;
 						if (!this.canvas.wrapperEl.contains(frameEl)) continue;
 						const webContents = remote.webContents.fromId(frameEl.getWebContentsId());
